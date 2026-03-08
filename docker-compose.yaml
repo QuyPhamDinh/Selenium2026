@@ -1,0 +1,38 @@
+services:
+  selenium-hub:
+    image: selenium/hub:4.41.0-20260222
+    container_name: selenium-hub
+    ports:
+      - "4442:4442"   # ← ADD THIS: Event bus publish
+      - "4443:4443"   # ← ADD THIS: Event bus subscribe
+      - "4444:4444"
+    environment:
+      - SE_SESSION_REQUEST_TIMEOUT=300
+      - SE_NODE_SESSION_TIMEOUT=300
+      - SE_SESSION_RETRY_INTERVAL=5
+
+  chrome-node:
+    # Google doesn't make 'Chrome' for ARM Linux, so the official
+    # ARM image uses Chromium under this name:
+    image: selenium/node-chromium:4.41.0-20260222
+    container_name: chrome-node
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_SESSION_TIMEOUT=120
+    shm_size: "2gb"
+
+  firefox-node:
+    image: selenium/node-firefox:4.41.0-20260222
+    container_name: firefox-node
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_SESSION_TIMEOUT=120
+    shm_size: "2gb"

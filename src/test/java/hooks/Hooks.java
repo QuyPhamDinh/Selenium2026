@@ -55,29 +55,33 @@ public class Hooks {
         long threadId = Thread.currentThread().getId();
         WebDriver driver = DriverManager.getDriver();
 
+        // Screenshot on failure
         if (scenario.isFailed() && driver != null) {
-            byte[] screenshot = ((TakesScreenshot) driver)
-                    .getScreenshotAs(OutputType.BYTES);
-            scenario.attach(screenshot, "image/png",
-                    "failure-" + scenario.getName());
-            Allure.addAttachment("Failure Screenshot",
-                    new ByteArrayInputStream(screenshot));
-            System.out.println("📸 [Thread " + threadId
-                    + "] Screenshot captured for: " + scenario.getName());
+            try {
+                byte[] screenshot = ((TakesScreenshot) driver)
+                        .getScreenshotAs(OutputType.BYTES);
+                scenario.attach(screenshot, "image/png",
+                        "failure-" + scenario.getName());
+                Allure.addAttachment("Failure Screenshot",
+                        new ByteArrayInputStream(screenshot));
+            } catch (Exception e) {
+                System.out.println("⚠️ [Thread " + threadId
+                        + "] Screenshot failed: " + e.getMessage());
+            }
         }
 
-        System.out.println("🔧 [Thread " + threadId + "] Closing browser for: "
-                + scenario.getName());
+        System.out.println("🔧 [Thread " + threadId
+                + "] Closing browser for: " + scenario.getName());
 
+        // Quit driver — releases Grid session
         DriverManager.quitDriver();
+
         BrowserHolder.clear();
         context.clear();
 
-        System.out.println("✅ [Thread " + threadId + "] Browser closed for: "
-                + scenario.getName() + " | Status: " + scenario.getStatus());
-
-        log.info("■ Finished: {} | Thread: {} | Status: {}",
-                scenario.getName(), threadId, scenario.getStatus());
+        System.out.println("✅ [Thread " + threadId
+                + "] Cleanup complete for: " + scenario.getName()
+                + " | Status: " + scenario.getStatus());
     }
 
     @Before("@database")
