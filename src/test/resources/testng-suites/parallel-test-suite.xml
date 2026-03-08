@@ -1,13 +1,26 @@
+<!-- src/test/resources/testng-suites/parallel-test-suite.xml -->
+
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
-<suite name="Parallel Test Suite"
-       parallel="methods"
-       thread-count="3"
-       data-provider-thread-count="3"
+<suite name="Multi Browser Parallel"
+       parallel="tests"
+       thread-count="2"
+       data-provider-thread-count="2"
        verbose="2">
 
-    <test name="Parallel Scenarios">
+    <!-- Chrome: 3 scenarios parallel -->
+    <test name="Chrome Tests">
+        <parameter name="browser" value="chrome"/>
         <classes>
-            <class name="runners.ParallelTestRunner"/>
+            <class name="runners.CrossBrowserRunner"/>
         </classes>
     </test>
+
+    <!-- Firefox: 3 scenarios parallel (SAME TIME as Chrome) -->
+    <test name="Firefox Tests">
+        <parameter name="browser" value="firefox"/>
+        <classes>
+            <class name="runners.CrossBrowserRunner"/>
+        </classes>
+    </test>
+
 </suite>

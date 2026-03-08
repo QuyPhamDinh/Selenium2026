@@ -290,19 +290,138 @@ mvn clean test -Dsuite=cross-browser-suite
 </suite>
 ```
 
-### Parallel Modes Explained
+## 🔄 Cross-Browser Parallel — How It Works
+
+### Architecture
 
 ```
-parallel="tests"
-  → Each <test> block (browser) runs in its own thread
-  → Scenarios within each browser run sequentially
-  → 3 browsers × sequential scenarios
-
-parallel="tests" + DataProvider(parallel=true)
-  → Each browser runs in its own thread
-  → Scenarios WITHIN each browser also run in parallel
-  → 3 browsers × parallel scenarios = MAXIMUM SPEED
+Suite XML
+  │
+  ├── <test name="Chrome Tests"> browser=chrome
+  │     │
+  │     │   CrossBrowserRunner instance A
+  │     │
+  │     ├── @BeforeTest
+  │     │     └── ITestContext → reads XML parameter → this.browser = "chrome"
+  │     │
+  │     ├── DataProvider(parallel=true) → spawns 3 threads
+  │     │
+  │     ├── runScenario() Thread 32
+  │     │     ├── BrowserHolder.set("chrome")    ← ThreadLocal
+  │     │     ├── Cucumber @Before Hook
+  │     │     │     └── BrowserHolder.get() → "chrome"
+  │     │     │     └── DriverFactory.createDriver("chrome")
+  │     │     ├── Step Definitions execute
+  │     │     └── Cucumber @After Hook → quit browser
+  │     │
+  │     ├── runScenario() Thread 34
+  │     │     ├── BrowserHolder.set("chrome")
+  │     │     └── ... same flow ...
+  │     │
+  │     └── runScenario() Thread 36
+  │           ├── BrowserHolder.set("chrome")
+  │           └── ... same flow ...
+  │
+  └── <test name="Firefox Tests"> browser=firefox    ← RUNS AT SAME TIME
+        │
+        │   CrossBrowserRunner instance B
+        │
+        ├── @BeforeTest
+        │     └── ITestContext → reads XML parameter → this.browser = "firefox"
+        │
+        ├── DataProvider(parallel=true) → spawns 3 threads
+        │
+        ├── runScenario() Thread 33
+        │     ├── BrowserHolder.set("firefox")   ← ThreadLocal
+        │     ├── Cucumber @Before Hook
+        │     │     └── BrowserHolder.get() → "firefox"
+        │     │     └── DriverFactory.createDriver("firefox")
+        │     ├── Step Definitions execute
+        │     └── Cucumber @After Hook → quit browser
+        │
+        ├── runScenario() Thread 35
+        │     ├── BrowserHolder.set("firefox")
+        │     └── ... same flow ...
+        │
+        └── runScenario() Thread 37
+              ├── BrowserHolder.set("firefox")
+              └── ... same flow ...
 ```
+
+### Thread Mapping
+
+```
+┌──────────┬──────────┬───────────────┬──────────────────────┐
+│ Thread   │ Browser  │ Scenario      │ Set By               │
+├──────────┼──────────┼───────────────┼──────────────────────┤
+│ 28       │ chrome   │ @BeforeTest   │ ITestContext (XML)   │
+│ 29       │ firefox  │ @BeforeTest   │ ITestContext (XML)   │
+├──────────┼──────────┼───────────────┼──────────────────────┤
+│ 32       │ chrome   │ Scenario ONE  │ BrowserHolder (TL)   │
+│ 34       │ chrome   │ Scenario TWO  │ BrowserHolder (TL)   │
+│ 36       │ chrome   │ Scenario THREE│ BrowserHolder (TL)   │
+│ 33       │ firefox  │ Scenario ONE  │ BrowserHolder (TL)   │
+│ 35       │ firefox  │ Scenario TWO  │ BrowserHolder (TL)   │
+│ 37       │ firefox  │ Scenario THREE│ BrowserHolder (TL)   │
+└──────────┴──────────┴───────────────┴──────────────────────┘
+
+Total: 6 browsers running simultaneously
+Time:  ~5-7 seconds (not 30 seconds sequential)
+```
+
+### Key Components
+
+```
+┌───────────────────────────┬──────────────────────────────────────────┐
+│ Component                 │ Role                                     │
+├───────────────────────────┼──────────────────────────────────────────┤
+│ CrossBrowserRunner.java   │ Overrides runScenario() to set           │
+│                           │ BrowserHolder per thread                 │
+├───────────────────────────┼──────────────────────────────────────────┤
+│ BrowserHolder.java        │ ThreadLocal<String> — stores browser     │
+│                           │ name per thread (thread-safe)            │
+├───────────────────────────┼──────────────────────────────────────────┤
+│ Hooks.java                │ Reads BrowserHolder.get() in @Before     │
+│                           │ to launch correct browser                │
+├───────────────────────────┼──────────────────────────────────────────┤
+│ parallel-test-suite.xml   │ Defines browsers via <parameter>         │
+│                           │ No code changes needed to add browsers   │
+└───────────────────────────┴──────────────────────────────────────────┘
+```
+
+### Why It Works
+
+```
+THE CRITICAL INSIGHT:
+─────────────────────
+
+  runScenario()  ──→  BrowserHolder.set("firefox")
+       │
+       └── runs in SAME THREAD as ──→  Cucumber @Before Hook
+                                              │
+                                              └── BrowserHolder.get() → "firefox" ✅
+
+  ThreadLocal guarantees:
+    Thread 32 sets "chrome"  → Thread 32 reads "chrome"
+    Thread 33 sets "firefox" → Thread 33 reads "firefox"
+    No cross-contamination between threads
+```
+
+### Add a New Browser (Zero Code Changes)
+
+```xml
+<!-- Just add a new <test> block in suite XML -->
+<test name="Edge Tests">
+    <parameter name="browser" value="edge"/>
+    <classes>
+        <class name="runners.CrossBrowserRunner"/>
+    </classes>
+</test>
+```
+
+# Open README.md in editor and paste the section above
+
+# after the "Cross-Browser Test
 
 ---
 
