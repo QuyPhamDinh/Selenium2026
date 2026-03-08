@@ -8,7 +8,7 @@ import org.testng.annotations.DataProvider;
 
 @CucumberOptions(
         features = "src/test/resources/features/parallel",
-        glue = {"stepdefinitions"},
+        glue = {"stepdefinitions", "hooks"},
         plugin = {
                 "pretty",
                 "html:target/cucumber-reports/parallel-test.html"
