@@ -1,0 +1,7 @@
+<suite parallel="methods" thread-count="5" data-provider-thread-count="5">
+    <test name="Chrome">
+        <classes>
+            <class name="runners.SmokeRunner"/>
+        </classes>
+    </test>
+</suite>
