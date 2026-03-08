@@ -17,7 +17,10 @@ import org.testng.annotations.Test;
         glue = {"stepdefinitions", "hooks"},
         plugin = {
                 "pretty",
-                "html:target/cucumber-reports/cross-browser.html"
+                "html:target/cucumber-reports/cross-browser.html",
+                "json:target/cucumber-reports/cucumber.json",
+                "rerun:target/failed_scenarios.txt",
+                "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
         },
         tags = "@parallel-test"
 )
