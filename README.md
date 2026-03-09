@@ -419,10 +419,6 @@ THE CRITICAL INSIGHT:
 </test>
 ```
 
-# Open README.md in editor and paste the section above
-
-# after the "Cross-Browser Test
-
 ---
 
 ## 🌍 Environments
